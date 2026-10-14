@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Northwind Cloud Support</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 720px; margin: 40px auto; background:#0f1115; color:#e7e9ee; }
+    h1 { font-size: 20px; }
+    #log { border: 1px solid #2a2d35; border-radius: 8px; padding: 12px; height: 360px; overflow-y: auto; background:#161922; }
+    .msg { margin: 8px 0; }
+    .user { color:#7dd3fc; }
+    .bot { color:#a7f3d0; }
+    form { display:flex; gap:8px; margin-top: 12px; }
+    input[type=text] { flex:1; padding:8px; border-radius:6px; border:1px solid #2a2d35; background:#0f1115; color:#e7e9ee; }
+    button { padding:8px 14px; border-radius:6px; border:none; background:#2563eb; color:white; cursor:pointer; }
+    a { color:#93c5fd; }
+    .nav { margin-bottom: 16px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Northwind Cloud Support</h1>
+  <div class="nav"><a href="/kb">Knowledge base articles</a> &middot; submit via POST /kb</div>
+  <div id="log"></div>
+  <form id="f">
+    <input type="text" id="m" placeholder="Ask a support question..." autocomplete="off">
+    <button type="submit">Send</button>
+  </form>
+  <script>
+    const log = document.getElementById('log');
+    const form = document.getElementById('f');
+    const input = document.getElementById('m');
+    function append(cls, text) {
+      const d = document.createElement('div');
+      d.className = 'msg ' + cls;
+      d.textContent = (cls === 'user' ? 'you: ' : 'agent: ') + text;
+      log.appendChild(d);
+      log.scrollTop = log.scrollHeight;
+    }
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const message = input.value;
+      if (!message) return;
+      append('user', message);
+      input.value = '';
+      const resp = await fetch('/chat', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({message})
+      });
+      const data = await resp.json();
+      append('bot', data.reply);
+    });
+  </script>
+</body>
+</html>

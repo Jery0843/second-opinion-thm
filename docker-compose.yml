@@ -1,0 +1,71 @@
+services:
+  ollama:
+    build: ./ollama
+    networks:
+      - internal_net
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+
+  kb-service:
+    build: ./kb-service
+    networks:
+      - internal_net
+    volumes:
+      - kb_data:/data
+    restart: unless-stopped
+
+  metadata-service:
+    build: ./metadata-service
+    networks:
+      - internal_net
+    environment:
+      ORCH_API_KEY: "${ORCH_API_KEY:?Set ORCH_API_KEY in .env -- run ./setup.sh first}"
+      METADATA_NONCE: "${METADATA_NONCE:?Set METADATA_NONCE in .env -- run ./setup.sh first}"
+    restart: unless-stopped
+
+  ops-agent:
+    build: ./ops-agent
+    networks:
+      - internal_net
+    environment:
+      KB_SERVICE_URL: "http://kb-service:8081"
+      OLLAMA_URL: "http://ollama:11434"
+      OLLAMA_MODEL: "llama3.2:1b"
+      ORCH_API_KEY: "${ORCH_API_KEY:?Set ORCH_API_KEY in .env -- run ./setup.sh first}"
+      USER_FLAG: "${USER_FLAG:?Set USER_FLAG in .env -- run ./setup.sh first}"
+      POLL_INTERVAL: "15"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      - kb-service
+      - ollama
+    restart: unless-stopped
+
+  helpdesk-agent:
+    build: ./helpdesk-agent
+    networks:
+      - public_net
+      - internal_net
+    ports:
+      - "${HELPDESK_PORT:-5000}:5000"
+    environment:
+      KB_SERVICE_URL: "http://kb-service:8081"
+      OPS_AGENT_URL: "http://ops-agent:8083"
+      OLLAMA_URL: "http://ollama:11434"
+      OLLAMA_MODEL: "llama3.2:1b"
+      METADATA_NONCE: "${METADATA_NONCE:?Set METADATA_NONCE in .env -- run ./setup.sh first}"
+    depends_on:
+      - kb-service
+      - ops-agent
+      - ollama
+    restart: unless-stopped
+
+networks:
+  public_net:
+  internal_net:
+    internal: true
+
+volumes:
+  kb_data:
+  ollama_data:
